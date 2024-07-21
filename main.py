@@ -23,7 +23,7 @@ __version__ = "1.0"
 
 verboselogs.install()
 logger = verboselogs.VerboseLogger("module_logger")
-coloredlogs.install(level="verbose", logger=logger)
+coloredlogs.install(level="debug", logger=logger)
 
 
 # -----------------------------------------------------------------------------
@@ -45,10 +45,10 @@ class CommandLoader:
         Args:
             yaml_file (str): Path to the YAML file containing commands.
         """
-        logger.verbose("Initializing CommandLoader with YAML file: %s", yaml_file)
+        logger.debug("Initializing CommandLoader with YAML file: %s", yaml_file)
         with open(yaml_file, 'r') as file:
             self.commands = yaml.safe_load(file)['commands']
-        logger.verbose("Loaded %d commands from YAML file", len(self.commands))
+        logger.debug("Loaded %d commands from YAML file", len(self.commands))
 
     def get_command(self, name: str) -> tp.Optional[dict]:
         """
@@ -65,7 +65,7 @@ class CommandLoader:
             if command['name'] == name:
                 logger.debug("Command found: %s", command)
                 return command
-        logger.verbose("Command not found: %s", name)
+        logger.debug("Command not found: %s", name)
         return None
 
 
@@ -86,7 +86,7 @@ class VirtualRegister:
         Args:
             command (dict): The command dictionary.
         """
-        logger.verbose("Initializing VirtualRegister with command: %s", command)
+        logger.debug("Initializing VirtualRegister with command: %s", command)
         self.command = command
         self.bytes = command['bytes']
         self.parameters = self._extract_parameters()
@@ -122,12 +122,12 @@ class VirtualRegister:
         logger.debug("Setting byte at index %d to value %02X", index, value)
         if index < len(self.bytes):
             if isinstance(self.bytes[index], dict):
-                logger.error("Cannot set value directly for a parameter byte at index %d", index)
+                logger.debug("Cannot set value directly for a parameter byte at index %d", index)
                 raise ValueError("Cannot set value directly for a parameter byte")
             self.bytes[index] = value
             logger.debug("Byte set successfully at index %d", index)
         else:
-            logger.error("Byte index %d out of range", index)
+            logger.debug("Byte index %d out of range", index)
             raise IndexError("Byte index out of range")
 
     def get_bytes(self) -> list[int]:
@@ -172,10 +172,10 @@ class VirtualRegister:
                         logger.debug("Parameter %s set to value %02X at index %d", param, value, i)
                         break
             else:
-                logger.error("Value %02X not valid for parameter %s", value, param)
+                logger.debug("Value %02X not valid for parameter %s", value, param)
                 raise ValueError(f"Value {value} not valid for parameter {param}")
         else:
-            logger.error("Parameter %s not valid for this command", param)
+            logger.debug("Parameter %s not valid for this command", param)
             raise ValueError(f"Parameter {param} not valid for this command")
 
 
@@ -307,6 +307,7 @@ class DeviceHandler(ABC):
         """
         pass
 
+    @abstractmethod
     def execute_command(self, command_name: str):
         """
         Execute a command by name.
@@ -314,30 +315,21 @@ class DeviceHandler(ABC):
         Args:
             command_name (str): The name of the command to execute.
         """
-        command = self.command_loader.get_command(command_name)
-        if command:
-            if command_name not in self.registers:
-                self.registers[command_name] = VirtualRegister(command)
-            self.communication_interface.open()
-            self.communication_interface.write(bytes(self.registers[command_name].get_bytes()))
-            response = self.communication_interface.read(10)
-            self.communication_interface.close()
-            logger.info(f"Executed command '{command_name}': Response: {response}")
-        else:
-            logger.error(f"Command '{command_name}' not found")
+        raise NotImplemented
+
 
     def help(self):
         """
         Displays help information for all available commands and their parameters.
         """
-        logger.info("Available Commands:")
+        logger.debug("Available Commands:")
         for cmd in self.command_loader.commands:
-            logger.info(f"Command: {cmd['name']}")
-            logger.info(f"  Description: {cmd['description']}")
+            logger.debug(f"Command: {cmd['name']}")
+            logger.debug(f"  Description: {cmd['description']}")
             if 'parameters' in cmd:
-                logger.info("  Parameters:")
+                logger.debug("  Parameters:")
                 for param, details in cmd['parameters'].items():
-                    logger.info(f"    {param}: {details['description']}")
+                    logger.debug(f"    {param}: {details['description']}")
 
 
 class CameraHandler(DeviceHandler):
@@ -345,15 +337,8 @@ class CameraHandler(DeviceHandler):
         """
         Initialize the camera device with necessary startup commands.
         """
-        logger.info("Initializing camera device")
+        logger.debug("Initializing camera device")
         self.execute_command('CAM_PowerOn')
-
-    def turn_off(self):
-        """
-        Turn off the camera.
-        """
-        logger.info("Turning off the camera")
-        self.execute_command('CAM_PowerOff')
 
     def help(self):
         """
@@ -369,56 +354,66 @@ class CameraHandler(DeviceHandler):
         """
         response = self.communication_interface.read(10)  # Adjust size based on expected response length
         if not response:
-            logger.verbose("No response received.")
+            logger.debug("No response received.")
             return {"status": "error", "message": "No response received"}
 
         # Convert response to hexadecimal string
         readable_response = ''.join(f"{byte:02x}" for byte in response)
-        logger.info(f"Raw response received: {readable_response}")
+        logger.debug(f"Raw response received: {readable_response}")
 
         # Assuming messages are separated by 'ff' and start with '90'
         messages = readable_response.split('ff')
         for msg in messages:
             if msg.startswith('90'):
-                self.evaluate_response(msg)
+                self._evaluate_response(msg)
 
         return {"status": "completed", "message": "All messages processed"}
 
-    def evaluate_response(self, msg):
+    def _evaluate_response(self, msg):
         """
         Evaluate a single VISCA message.
         """
         if msg[2:4] == '41':  # Example: '41' Acknowledgment
-            logger.verbose("[ACK] Acknowledgment received for a command.")
+            logger.debug("[ACK] Acknowledgment received for a command.")
         elif msg[2:4] == '51':  # Example: '51' Command Completion
-            logger.success("[COMPLETION] Command completed successfully.")
+            logger.debug("[COMPLETION] Command completed successfully.")
         elif msg[2:4] == '60':  # Example: '60' Syntax Error
-            logger.error("[Syntax error] in command. Command format is incorrect or parameter value is out of range.")
+            logger.debug("[Syntax error] in command. Command format is incorrect or parameter value is out of range.")
         elif msg[2:4] == '61':  # Example: '61' Command Not Executable
-            logger.warning("Command not executable. Current conditions do not allow this command to be executed.")
+            logger.debug("Command not executable. Current conditions do not allow this command to be executed.")
         else:
-            logger.verbose(f"Unknown VISCA message: {msg}")
+            logger.debug(f"Unknown VISCA message: {msg}")
 
-    def execute_command(self, command_name: str):
+    def execute_command(self, command_name: str, **kwargs):
         """
         Execute a command by name and evaluate the response using the VISCA protocol.
+        Allows passing additional parameters as keyword arguments.
 
         Args:
             command_name (str): The name of the command to execute.
+            **kwargs: Arbitrary keyword arguments representing command parameters.
         """
         command = self.command_loader.get_command(command_name)
         if command:
             if command_name not in self.registers:
                 self.registers[command_name] = VirtualRegister(command)
+
+            # Update command parameters with provided kwargs
+            for param, value in kwargs.items():
+                if param in self.registers[command_name].parameters:
+                    self.registers[command_name].set_parameter(param, value)
+                else:
+                    logger.debug(f"Parameter {param} not recognized for command {command_name}")
+
             self.communication_interface.open()
             self.communication_interface.write(bytes(self.registers[command_name].get_bytes()))
             response = self.read_response()  # Use the specialized VISCA response reader
             self.communication_interface.close()
-            logger.info(f"Response for command '{command_name}': {response['message']}")
+            logger.debug(f"Response for command '{command_name}': {response['message']}")
             if response['status'] == 'error':
-                logger.error(f"Error executing command '{command_name}': {response['message']}")
+                logger.debug(f"Error executing command '{command_name}': {response['message']}")
         else:
-            logger.error(f"Command '{command_name}' not found")
+            logger.debug(f"Command '{command_name}' not found")
 
 
 class DeviceManager:
@@ -456,7 +451,7 @@ def main():
     device_manager = DeviceManager('commands.yaml', 'COM9', 9600)
     camera_handler = device_manager.get_camera_handler()
     camera_handler.initialize_device()
-    camera_handler.execute_command('CAM_PowerOn')
+    camera_handler.execute_command('CAM_ZoomTeleVariable', speed=2, asdf=3)
 
 
 if __name__ == "__main__":

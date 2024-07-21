@@ -19,6 +19,7 @@ commands:
     description: "Turns the camera off."
     bytes: [0x81, 0x01, 0x04, 0x00, 0x03, 0xFF]
 
+##### Works until here
   - name: CAM_ZoomStop
     description: "Stops the zoom function."
     bytes: [0x81, 0x01, 0x04, 0x07, 0x00, 0xFF]
@@ -33,7 +34,10 @@ commands:
 
   - name: CAM_ZoomTeleVariable
     description: "Zooms in variably depending on the speed parameter."
-    bytes: [0x81, 0x01, 0x04, 0x07, {param_name: speed, values: [0x02, 0x03]}, 0x00, 0x00, 0xFF]
+    bytes: [0x81, 0x01, 0x04, 0x07,
+            {param_name: speed,
+             values: [0x02, 0x03]},
+      0x00, 0x00, 0xFF]
     parameters:
       speed:
         description: "Speed of the zoom, from slow to fast."
