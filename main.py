@@ -294,25 +294,10 @@ class UARTCommunication(CommunicationInterface):
 
 
 class DeviceHandler(ABC):
-    """
-    Abstract base class for device handlers, managing command operations and communications.
-
-    Attributes:
-        command_loader (CommandLoader): Responsible for loading and retrieving command data.
-        communication_interface (CommunicationInterface): Interface for device communication.
-    """
-
     def __init__(self, command_loader: CommandLoader, communication_interface: CommunicationInterface):
-        """
-        Initialize the DeviceHandler with a command loader and communication interface.
-
-        Args:
-            command_loader (CommandLoader): The command loader for managing commands.
-            communication_interface (CommunicationInterface): The communication interface for the device.
-        """
         self.command_loader = command_loader
         self.communication_interface = communication_interface
-        self.registers = {}  # Dictionary to store VirtualRegister objects for each command
+        self.registers = {}
 
     @abstractmethod
     def initialize_device(self):
@@ -336,58 +321,63 @@ class DeviceHandler(ABC):
             self.communication_interface.write(bytes(self.registers[command_name].get_bytes()))
             response = self.communication_interface.read(10)
             self.communication_interface.close()
-            logger.verbose("Executed command '{}': Response: {}".format(command_name, response))
+            logger.info(f"Executed command '{command_name}': Response: {response}")
         else:
-            logger.error("Command '{}' not found".format(command_name))
+            logger.error(f"Command '{command_name}' not found")
+
+    def help(self):
+        """
+        Displays help information for all available commands and their parameters.
+        """
+        logger.info("Available Commands:")
+        for cmd in self.command_loader.commands:
+            logger.info(f"Command: {cmd['name']}")
+            logger.info(f"  Description: {cmd['description']}")
+            if 'parameters' in cmd:
+                logger.info("  Parameters:")
+                for param, details in cmd['parameters'].items():
+                    logger.info(f"    {param}: {details['description']}")
+
 
 class CameraHandler(DeviceHandler):
-    """
-    Handler for camera devices, extending the generic DeviceHandler for camera-specific functionality.
-    """
-
     def initialize_device(self):
         """
         Initialize the camera device with necessary startup commands.
         """
-        logger.verbose("Initializing camera device")
-        self.execute_command('CAM_PowerOn')  # Example command, assumes 'CAM_PowerOn' is defined in commands YAML
+        logger.info("Initializing camera device")
+        self.execute_command('CAM_PowerOn')
 
     def turn_off(self):
         """
         Turn off the camera.
         """
-        logger.verbose("Turning off the camera")
-        self.execute_command('CAM_PowerOff')  # Example command, assumes 'CAM_PowerOff' is defined in commands YAML
+        logger.info("Turning off the camera")
+        self.execute_command('CAM_PowerOff')
+
+    def help(self):
+        """
+        Extends the generic help to include camera-specific command information.
+        """
+        super().help()  # Call the base class help method
+        logger.info("Camera-specific commands:")
+        # Add camera-specific commands or notes here if any
+
 
 # -----------------------------------------------------------------------------
 # FUNCTIONS
 # -----------------------------------------------------------------------------
 
 def main():
-    """
-    Main function to demonstrate the usage of DeviceHandler and CameraHandler with command execution.
-    """
-    logger.verbose("Starting main function")
-
-    # Initialize CommandLoader with the YAML file containing device commands
+    logger.info("Starting main function")
     command_loader = CommandLoader('commands.yaml')
-
-    # Initialize UART communication interface with specific parameters
-    uart_communication = UARTCommunication(port='COM9', baudrate=9600)
-
-    # Create a CameraHandler instance with the loaded command loader and communication interface
+    uart_communication = UARTCommunication(port='/dev/ttyUSB0', baudrate=9600)
     camera_handler = CameraHandler(command_loader, uart_communication)
 
-    # Initialize the camera (this could run a series of startup commands)
+    # Display help information
+    camera_handler.help()
+
+    # Initialize the camera
     camera_handler.initialize_device()
-
-    # Execute specific commands on the camera
-    # camera_handler.execute_command('CAM_ZoomTeleVariable')  # Example command
-    #
-    # # Turn off the camera using the handler's functionality
-    # camera_handler.turn_off()
-
-    # More camera operations can be added here as needed
 
 
 if __name__ == "__main__":
