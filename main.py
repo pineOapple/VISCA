@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from __future__ import annotations
 from abc import ABC, abstractmethod
 import typing as tp
@@ -22,7 +23,7 @@ __version__ = "1.0"
 
 verboselogs.install()
 logger = verboselogs.VerboseLogger("module_logger")
-coloredlogs.install(level="debug", logger=logger)
+coloredlogs.install(level="verbose", logger=logger)
 
 
 # -----------------------------------------------------------------------------
@@ -359,8 +360,92 @@ class CameraHandler(DeviceHandler):
         Extends the generic help to include camera-specific command information.
         """
         super().help()  # Call the base class help method
-        logger.info("Camera-specific commands:")
         # Add camera-specific commands or notes here if any
+
+    def read_response(self) -> dict:
+        """
+        Read and interpret the VISCA response from the camera.
+        Converts the response to a readable format and logs each part of the message.
+        """
+        response = self.communication_interface.read(10)  # Adjust size based on expected response length
+        if not response:
+            logger.verbose("No response received.")
+            return {"status": "error", "message": "No response received"}
+
+        # Convert response to hexadecimal string
+        readable_response = ''.join(f"{byte:02x}" for byte in response)
+        logger.info(f"Raw response received: {readable_response}")
+
+        # Assuming messages are separated by 'ff' and start with '90'
+        messages = readable_response.split('ff')
+        for msg in messages:
+            if msg.startswith('90'):
+                self.evaluate_response(msg)
+
+        return {"status": "completed", "message": "All messages processed"}
+
+    def evaluate_response(self, msg):
+        """
+        Evaluate a single VISCA message.
+        """
+        if msg[2:4] == '41':  # Example: '41' Acknowledgment
+            logger.verbose("[ACK] Acknowledgment received for a command.")
+        elif msg[2:4] == '51':  # Example: '51' Command Completion
+            logger.success("[COMPLETION] Command completed successfully.")
+        elif msg[2:4] == '60':  # Example: '60' Syntax Error
+            logger.error("[Syntax error] in command. Command format is incorrect or parameter value is out of range.")
+        elif msg[2:4] == '61':  # Example: '61' Command Not Executable
+            logger.warning("Command not executable. Current conditions do not allow this command to be executed.")
+        else:
+            logger.verbose(f"Unknown VISCA message: {msg}")
+
+    def execute_command(self, command_name: str):
+        """
+        Execute a command by name and evaluate the response using the VISCA protocol.
+
+        Args:
+            command_name (str): The name of the command to execute.
+        """
+        command = self.command_loader.get_command(command_name)
+        if command:
+            if command_name not in self.registers:
+                self.registers[command_name] = VirtualRegister(command)
+            self.communication_interface.open()
+            self.communication_interface.write(bytes(self.registers[command_name].get_bytes()))
+            response = self.read_response()  # Use the specialized VISCA response reader
+            self.communication_interface.close()
+            logger.info(f"Response for command '{command_name}': {response['message']}")
+            if response['status'] == 'error':
+                logger.error(f"Error executing command '{command_name}': {response['message']}")
+        else:
+            logger.error(f"Command '{command_name}' not found")
+
+
+class DeviceManager:
+    """
+    Manages the creation and initialization of device handlers with their respective
+    command loaders and communication interfaces.
+    """
+    def __init__(self, command_config, port, baudrate=9600):
+        """
+        Initializes the device manager with configurations for command loading and UART communication.
+
+        Args:
+            command_config (str): Path to the command configuration YAML file.
+            port (str): The COM port for UART communication.
+            baudrate (int): The baud rate for UART communication.
+        """
+        self.command_loader = CommandLoader(command_config)
+        self.uart_communication = UARTCommunication(port=port, baudrate=baudrate)
+
+    def get_camera_handler(self):
+        """
+        Creates and returns a CameraHandler initialized with the command loader and UART communication.
+
+        Returns:
+            CameraHandler: The initialized camera handler.
+        """
+        return CameraHandler(self.command_loader, self.uart_communication)
 
 
 # -----------------------------------------------------------------------------
@@ -368,16 +453,10 @@ class CameraHandler(DeviceHandler):
 # -----------------------------------------------------------------------------
 
 def main():
-    logger.info("Starting main function")
-    command_loader = CommandLoader('commands.yaml')
-    uart_communication = UARTCommunication(port='/dev/ttyUSB0', baudrate=9600)
-    camera_handler = CameraHandler(command_loader, uart_communication)
-
-    # Display help information
-    camera_handler.help()
-
-    # Initialize the camera
+    device_manager = DeviceManager('commands.yaml', 'COM9', 9600)
+    camera_handler = device_manager.get_camera_handler()
     camera_handler.initialize_device()
+    camera_handler.execute_command('CAM_PowerOn')
 
 
 if __name__ == "__main__":
