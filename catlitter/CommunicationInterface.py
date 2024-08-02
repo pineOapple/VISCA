@@ -2,8 +2,7 @@
 from __future__ import annotations
 import coloredlogs
 import verboselogs
-from catlitter.DeviceManager import DeviceManager
-# import catlitter
+from abc import ABC, abstractmethod
 # -----------------------------------------------------------------------------
 # COPYRIGHT
 # -----------------------------------------------------------------------------
@@ -25,21 +24,56 @@ coloredlogs.install(level="debug", logger=logger)
 # -----------------------------------------------------------------------------
 # CLASSES
 # -----------------------------------------------------------------------------
+class CommunicationInterface(ABC):
+    """
+    Abstract base class for hardware communication interfaces.
 
+    Subclasses should implement methods for opening, closing, reading from,
+    and writing to the communication interface.
+    """
 
+    @abstractmethod
+    def open(self):
+        """
+        Open the communication interface.
+        """
+        pass
 
+    @abstractmethod
+    def close(self):
+        """
+        Close the communication interface.
+        """
+        pass
 
+    @abstractmethod
+    def read(self, size: int) -> bytes:
+        """
+        Read data from the communication interface.
 
+        Args:
+            size (int): The number of bytes to read.
 
+        Returns:
+            bytes: The data read from the communication interface.
+        """
+        pass
+
+    @abstractmethod
+    def write(self, data: bytes):
+        """
+        Write data to the communication interface.
+
+        Args:
+            data (bytes): The data to write.
+        """
+        pass
 # -----------------------------------------------------------------------------
 # FUNCTIONS
 # -----------------------------------------------------------------------------
 
 def main():
-    device_manager = DeviceManager(command_config='commands.yaml', port='COM9', baudrate=9600)
-    camera_handler = device_manager.get_camera_handler()
-    camera_handler.initialize_device()
-    camera_handler.execute_command('CAM_ZoomTeleVariable', speed=2)
+    pass
 
 
 if __name__ == "__main__":

@@ -1,0 +1,43 @@
+COMMAND_FIELDS:
+  CMD_BOARD_INFO:
+    CMD_ID: { load: [0x56], min:, max:, size: 8, index:, help: "Request board ID" }  # make index 0 as default
+    CMD_HELP: "Request board and firmware information"
+    REQUEST:
+      CFG: { load: [0x0000], min:, max:, size: 16, index:, help: "Configuration for this serial driver" }  # make index 0 as default
+    RESPONSE:
+      BOARD_VER: { load:, min:, max:, size: 8, index:, help: "Board version multiplied by 10 (e.g., 3.0 => 30)" }  # make index 0 as default
+      FIRMWARE_VER: { load:, min:, max:, size: 16, index:, help: "Firmware version split into decimal digits X.XX.X" }  # make index 0 as default
+      STATE_FLAGS_DEBUG_MODE: { load:, min:, max:, size: 1, index:, help: "Debug mode (internal use only)" }  # bit 0
+      STATE_FLAGS_IS_FRAME_INVERTED: { load:, min:, max:, size: 1, index:, help: "System configured for frame inversion over the middle motor" }  # bit 1
+      STATE_FLAGS_INIT_STEP1_DONE: { load:, min:, max:, size: 1, index:, help: "Initialization of all basic sensors completed, frame inversion configuration applied" }  # bit 2
+      STATE_FLAGS_INIT_STEP2_DONE: { load:, min:, max:, size: 1, index:, help: "Initialization of the RC subsystem and adjustable variables completed, automated positioning started" }  # bit 3
+      STATE_FLAGS_STARTUP_AUTO_ROUTINE_DONE: { load:, min:, max:, size: 1, index:, help: "Startup positioning and calibrations finished" }  # bit 4
+      STATE_FLAGS_POWER_MANAGER_ENABLED: { load:, min:, max:, size: 1, index:, help: "Power manager enabled (for CAN_MCU board only)" }  # bit 5
+      BOARD_FEATURES_BAT_MONITORING: { load:, min:, max:, size: 1, index:, help: "Battery monitoring enabled" }  # bit 1
+      BOARD_FEATURES_AXIS_3: { load:, min:, max:, size: 1, index:, help: "3-axis configuration" }  # bit 0
+      BOARD_FEATURES_ENCODERS: { load:, min:, max:, size: 1, index:, help: "Encoders available" }  # bit 2
+      BOARD_FEATURES_BODE_TEST: { load:, min:, max:, size: 1, index:, help: "Bode test feature available" }  # bit 3
+      BOARD_FEATURES_SCRIPTING: { load:, min:, max:, size: 1, index:, help: "Scripting feature available" }  # bit 4
+      BOARD_FEATURES_CURRENT_SENSOR: { load:, min:, max:, size: 1, index:, help: "Current sensor available" }  # bit 5
+      BOARD_FEATURES_MAG_SENSOR: { load:, min:, max:, size: 1, index:, help: "Magnetic sensor available" }  # bit 6
+      BOARD_FEATURES_ORDER_OF_AXES_LETUS: { load:, min:, max:, size: 1, index:, help: "Order of axes follows LETUS standard" }  # bit 7
+      BOARD_FEATURES_IMU_EEPROM: { load:, min:, max:, size: 1, index:, help: "IMU EEPROM available" }  # bit 8
+      BOARD_FEATURES_FRAME_IMU_EEPROM: { load:, min:, max:, size: 1, index:, help: "Frame IMU EEPROM available" }  # bit 9
+      BOARD_FEATURES_CAN_PORT: { load:, min:, max:, size: 1, index:, help: "CAN port available" }  # bit 10
+      BOARD_FEATURES_MOMENTUM: { load:, min:, max:, size: 1, index:, help: "Momentum feature available" }  # bit 11
+      BOARD_FEATURES_COGGING_CORRECTION: { load:, min:, max:, size: 1, index:, help: "Cogging correction feature available" }  # bit 12
+      BOARD_FEATURES_MOTOR4_CONTROL: { load:, min:, max:, size: 1, index:, help: "4th motor control available" }  # bit 13
+      BOARD_FEATURES_ACC_AUTO_CALIB: { load:, min:, max:, size: 1, index:, help: "Accelerometer auto calibration available" }  # bit 14
+      BOARD_FEATURES_BIG_FLASH: { load:, min:, max:, size: 1, index:, help: "Firmware requires 256Kb of FLASH" }  # bit 15
+      CONNECTION_FLAG_CONNECTION_USB: { load:, min:, max:, size: 1, index:, help: "Connection via USB" }  # bit 0
+      FRW_EXTRA_ID: { load:, min:, max:, size: 32, index:, help: "Used for specific builds only" }  # make index 0 as default
+      RESERVED: { load:, min:, max:, size: 24, index:, help: "Reserved for future use" }  # make index 0 as default
+      BASE_FRW_VER: { load:, min:, max:, size: 16, index:, help: "Main version on which experimental versions are based" }  # make index 0 as default
+
+PROTOCOL_FIELDS:
+  START_CHARACTER: { load: [0x23], min:, max:, size: 8, index:, help: "Start character of the protocol" }  # make index 0 as default
+  CMD_ID: { load:, min:, max:, size: 8, index:, help: "Identifier for the command" }  # make index 0 as default
+  PAYLOAD_SIZE: { load:, min:, max:, size: 8, index:, help: "Size of the payload" }  # make index 0 as default
+  HEADER_CHECKSUM: { load:, min:, max:, size: 8, index:, help: "Checksum of the header" }  # make index 0 as default
+  PAYLOAD: { load:, min:, max:, size: -1, index:, help: "Payload data" }  # make index 0 as default
+  PAYLOAD_CHECKSUM: { load:, min:, max:, size: 8, index:, help: "Checksum of the payload" }  # make index 0 as default

@@ -2,8 +2,6 @@
 from __future__ import annotations
 import coloredlogs
 import verboselogs
-from catlitter.DeviceManager import DeviceManager
-# import catlitter
 # -----------------------------------------------------------------------------
 # COPYRIGHT
 # -----------------------------------------------------------------------------
@@ -26,20 +24,12 @@ coloredlogs.install(level="debug", logger=logger)
 # CLASSES
 # -----------------------------------------------------------------------------
 
-
-
-
-
-
 # -----------------------------------------------------------------------------
 # FUNCTIONS
 # -----------------------------------------------------------------------------
 
 def main():
-    device_manager = DeviceManager(command_config='commands.yaml', port='COM9', baudrate=9600)
-    camera_handler = device_manager.get_camera_handler()
-    camera_handler.initialize_device()
-    camera_handler.execute_command('CAM_ZoomTeleVariable', speed=2)
+    pass
 
 
 if __name__ == "__main__":
